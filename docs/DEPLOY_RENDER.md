@@ -93,7 +93,18 @@ Em seguida, publique o novo APK em **Releases** do repo para as pessoas baixarem
 - **`HARBOR_DATA_KEY` e `HARBOR_TOKEN_KEY`**: guarde nos *Secrets*/alertas da própria Render (Environment) fora do repo. Se `HARBOR_DATA_KEY` se perder, os textos cifrados não podem mais ser lidos.
 - **Backup do banco**: com disco, copie periodicamente `harbor.db` (Render Shell `cp`/download manual ou serviço agendado). Em demo, joque fora sem culpa.
 
-## 8. Limitações conhecidas no Render
+## 8. Problemas comuns (troubleshooting)
+
+| Erro no log do deploy | Causa | Correção |
+|---|---|---|
+| `HARBOR_DATA_KEY deve ser definido fora do ambiente Development.` | O serviço subiu em produção sem a variável de criptografia. | Em **Environment**, defina `HARBOR_DATA_KEY` (e também `HARBOR_TOKEN_KEY`, exigida logo em seguida em `Program.cs`), salve e **Manual Deploy → Deploy latest commit**. |
+| `HARBOR_TOKEN_KEY deve ser definido fora do ambiente Development.` | Variável do token ausente em produção. | idem: defina `HARBOR_TOKEN_KEY` no Environment. |
+| O serviço fica dormindo e a 1ª requisição demora | Plano gratuito hiberna após inatividade | Aguarde ~50 s no primeiro acesso, ou use instância paga. |
+| Cadastros somem a cada deploy | Free tier não tem disco persistente | Use o plano com **Disk** e `ConnectionStrings__Harbor=Data Source=/data/harbor.db`. |
+
+> O contêiner Docker roda com `ASPNETCORE_ENVIRONMENT=Production` por padrão; as chaves de desenvolvimento fixas (`harbor-local-...`) só funcionam em `Development` e por isso **obrigatoriamente** as variáveis precisam existir no Render.
+
+## 9. Limitações conhecidas no Render
 
 - Plano gratuito: o serviço **hiberna**; a primeira chamada depois de 15 min de inatividade demora ~50 s (cold start), o que pode aparentar travamento no app na primeira ação.
 - SQLite não é recomendado para múltiplas instâncias; mantenha 1 instância enquanto usar SQLite.
