@@ -32,7 +32,7 @@ adb install -r Harbor-v*.apk
 
 Ao instalar, aceite a instalação de "app desconhecido" para o gerenciador que estiver usando (navegador/Drive/Files). O APK é de **debug** — para distribuição final, gere um release assinado em modo `release`.
 
-> **Importante:** o APK publicado aponta para a URL da API embutida em tempo de build (`-PharborApiBaseUrl=...`). O APK da release atual aponta para o servidor do desenvolvedor na rede local (`http://192.168.55.120:5080/`); quando o servidor estiver no Render, gere/publique um novo release apontando para `https://SEU-SERVICO.onrender.com/` (veja `docs/DEPLOY_RENDER.md`, seção 6).
+> **Importante:** o APK publicado aponta para a URL da API embutida em tempo de build (`-PharborApiBaseUrl=...`). A partir da release **v0.1.1**, o APK aponta para o servidor publicado no Render (`https://harbor-dl93.onrender.com/`) e funciona em qualquer rede, inclusive dados móveis. Para apontar a outra instância, gere um novo build com `-PharborApiBaseUrl=<URL>/` (veja `docs/DEPLOY_RENDER.md`, seção 6).
 
 ---
 
