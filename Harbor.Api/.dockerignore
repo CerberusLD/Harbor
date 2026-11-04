@@ -1,0 +1,7 @@
+bin/
+obj/
+harbor.db
+harbor.db-shm
+harbor.db-wal
+Dockerfile
+.dockerignore

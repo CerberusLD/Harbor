@@ -1,0 +1,41 @@
+# Artefatos de build
+bin/
+obj/
+build/
+.gradle/
+.cxx/
+captures/
+kls/
+out/
+
+# IDEs
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+local.properties
+
+# Banco de dados local (dados dos clientes não devem ir ao repositório)
+Harbor.Api/harbor.db
+Harbor.Api/harbor.db-shm
+Harbor.Api/harbor.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# APKs gerados (serão publicados via release do GitHub)
+*.apk
+*.aab
+
+# Arquivos compactados de backup local
+*.7z
+*.zip
+
+# Python (script de extracao de assets)
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+## Arquivos gerados pelo build
+bin/
+obj/
+
+## Banco de dados local do SQLite
+*.db
+*.db-shm
+*.db-wal
+
+## Configurações locais
+appsettings.Local.json
+*.user

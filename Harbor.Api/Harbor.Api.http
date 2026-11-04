@@ -1,0 +1,31 @@
+@Harbor = http://localhost:5080
+
+### Saúde
+GET {{Harbor}}/health
+
+### Planos disponíveis
+GET {{Harbor}}/api/planos
+
+### Cadastro de demonstração
+POST {{Harbor}}/api/contas
+Content-Type: application/json
+
+{
+  "nome": "Ana Souza",
+  "email": "ana@example.com",
+  "senha": "senha-segura",
+  "endereco": "Rua das Flores, 10, Curitiba",
+  "consentimento": true
+}
+
+### Login (copie o token retornado para a variável abaixo)
+POST {{Harbor}}/api/sessao
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "senha": "senha-segura"
+}
+
+### Catálogo de livros
+GET {{Harbor}}/api/livros
