@@ -3,12 +3,24 @@ package br.com.harbor
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +44,7 @@ import androidx.compose.ui.text.font.*
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
+import kotlinx.coroutines.delay
 
 /**
  * Harbor palette. The brand wine/sand tones stay recognisable in both themes while
@@ -75,6 +88,29 @@ internal object HarborColors {
 
     val HeaderBrush get() = Brush.verticalGradient(listOf(Color(0xFF8B1136), Color(0xFF630626), Color(0xFF4A0218)))
     val BottomBrush get() = Brush.verticalGradient(listOf(Color(0xFF7B0F30), Color(0xFF56061F)))
+}
+
+/** Uma edição do carrossel "Edições Passadas" (capa + título + referência mensal). */
+internal data class EdicaoUi(val capa: Int, val titulo: String, val rotulo: String)
+
+/**
+ * Entrada suave (fade + subida) usada em cartões e listas para a interface não
+ * aparecer "seca". O atraso permite animar itens em cascata.
+ */
+@Composable
+fun Modifier.harborEntrance(delayMillis: Int = 0, slide: Float = 26f): Modifier {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(delayMillis.toLong()); visible = true }
+    val progress by animateFloatAsState(if (visible) 1f else 0f, tween(380), label = "entrance")
+    return this.graphicsLayer { alpha = progress; translationY = (1f - progress) * slide }
+}
+
+/** Escala do botão primário enquanto está pressionado. */
+@Composable
+private fun Modifier.harborPressScale(interaction: MutableInteractionSource): Modifier {
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, tween(120), label = "press")
+    return this.graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
 internal enum class HarborTab { Orders, Categories, Home, Offers, Profile }
@@ -549,13 +585,16 @@ internal fun HarborLightField(
 
 @Composable
 internal fun HarborPrimaryButton(text: String, busy: Boolean = false, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(46.dp)
-            .shadow(7.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x33630626), spotColor = Color(0x40630626)),
+            .shadow(7.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x33630626), spotColor = Color(0x40630626))
+            .harborPressScale(interaction),
         enabled = !busy,
+        interactionSource = interaction,
         shape = RoundedCornerShape(24.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = HarborColors.WineSolid,
@@ -580,6 +619,17 @@ internal fun HarborDashboard(
     onTab: (HarborTab) -> Unit,
 ) {
     val pager = rememberPagerState(initialPage = 0, pageCount = { 6 })
+    val capas = remember { listOf(R.drawable.capa_bussola_de_ouro, R.drawable.capa_o_exterminador, R.drawable.capa_atlantida, R.drawable.capa_jogos_vorazes) }
+    val rotulos = remember { listOf("Jan 2026", "Dez 2025", "Nov 2025", "Out 2025", "Set 2025", "Ago 2025", "Jul 2025", "Jun 2025") }
+    val edicoes = remember(books) {
+        (0 until 8).map { i ->
+            EdicaoUi(
+                capa = capas[i % capas.size],
+                titulo = books.getOrNull(i)?.titulo ?: "Edição ${String.format("%02d", i + 1)}",
+                rotulo = rotulos[i]
+            )
+        }
+    }
     HarborDashboardFrame(content = {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 18.dp, bottom = 10.dp)) {
             GreetingCard(name)
@@ -601,23 +651,91 @@ internal fun HarborDashboard(
                 }
             }
             Text("Edições Passadas!", Modifier.fillMaxWidth().padding(start = 8.dp, top = 8.dp, bottom = 11.dp), fontSize = 17.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, color = HarborColors.Wine)
-            Row(Modifier.fillMaxWidth().height(110.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                val covers = listOf(R.drawable.capa_bussola_de_ouro, R.drawable.capa_o_exterminador, R.drawable.capa_atlantida)
-                covers.forEachIndexed { index, image ->
-                    Box(Modifier.width(90.dp).height(106.dp).clickable { books.getOrNull(index)?.let(onBook) }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.align(Alignment.Center).size(85.dp).shadow(6.dp, CircleShape, ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)).clip(CircleShape).background(HarborColors.Wine))
-                        Image(painterResource(image), "Capa de uma edição anterior", Modifier.width(66.dp).height(95.dp), contentScale = ContentScale.FillBounds)
-                    }
-                }
-            }
+            EdicoesCarousel(edicoes) { index -> books.getOrNull(index)?.let(onBook) }
         }
     }, selectedTab = selectedTab, onTab = onTab)
+}
+
+/** Carrossel horizontal das edições anteriores, com avanço automático e indicador. */
+@Composable
+private fun EdicoesCarousel(edicoes: List<EdicaoUi>, onSelect: (Int) -> Unit) {
+    if (edicoes.isEmpty()) return
+    val items = remember(edicoes) { edicoes + edicoes }
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, edicoes.size) {
+        while (true) {
+            delay(3000)
+            if (listState.isScrollInProgress) continue
+            val next = listState.firstVisibleItemIndex + 1
+            if (next >= edicoes.size) listState.scrollToItem(next - edicoes.size)
+            else listState.animateScrollToItem(next)
+        }
+    }
+    Column(Modifier.fillMaxWidth()) {
+        LazyRow(
+            state = listState,
+            flingBehavior = rememberSnapFlingBehavior(listState),
+            modifier = Modifier.fillMaxWidth().height(168.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            itemsIndexed(items, key = { index, _ -> index }) { _, edicao ->
+                EdicaoItem(edicao) { onSelect(items.indexOf(edicao)) }
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 9.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(edicoes.size) { index ->
+                val active = (listState.firstVisibleItemIndex % edicoes.size) == index
+                val width by animateDpAsState(if (active) 18.dp else 6.dp, tween(240))
+                Box(
+                    Modifier
+                        .padding(horizontal = 3.dp)
+                        .size(width = width, height = 6.dp)
+                        .clip(CircleShape)
+                        .background(if (active) HarborColors.Gold else HarborColors.Wine.copy(alpha = 0.35f))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EdicaoItem(edicao: EdicaoUi, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .width(112.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(HarborColors.SurfaceWarm)
+            .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.6f), RoundedCornerShape(17.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier.size(84.dp).shadow(5.dp, CircleShape, ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)).clip(CircleShape).background(HarborColors.Wine),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(painterResource(edicao.capa), "Capa de ${edicao.titulo}", Modifier.width(64.dp).height(92.dp), contentScale = ContentScale.FillBounds)
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(edicao.rotulo, fontSize = 9.sp, letterSpacing = 0.4.sp, fontWeight = FontWeight.Bold, color = HarborColors.Gold)
+        Text(
+            edicao.titulo,
+            Modifier.padding(top = 2.dp),
+            fontSize = 10.sp, lineHeight = 12.sp, color = HarborColors.Wine,
+            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis
+        )
+    }
 }
 
 @Composable
 private fun GreetingCard(name: String) {
     Row(
-        Modifier.fillMaxWidth().height(122.dp).shadow(6.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x33630626))
+        Modifier.fillMaxWidth().height(122.dp).harborEntrance().shadow(6.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x33630626))
             .clip(RoundedCornerShape(22.dp))
             .background(HarborColors.SurfaceWarm)
             .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
@@ -753,11 +871,12 @@ internal fun HarborGenreScreen(
                     Text("Selecione de 1 a 3 gêneros literários para direcionar a curadoria da sua assinatura.", Modifier.fillMaxWidth().padding(top = 7.dp, bottom = 16.dp, start = 8.dp, end = 8.dp), textAlign = TextAlign.Center, fontSize = 12.sp, lineHeight = 15.sp, color = HarborColors.Muted)
                     genres.chunked(3).forEachIndexed { rowIndex, row ->
                         Row(Modifier.fillMaxWidth().padding(bottom = if (rowIndex == 0) 13.dp else 0.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            row.forEach { (name, asset) ->
+                            row.forEachIndexed { colIndex, (name, asset) ->
                                 val active = name in selected
                                 val scale by animateFloatAsState(if (active) 1.03f else 1f, tween(180))
                                 Card(
                                     Modifier
+                                        .harborEntrance(rowIndex * 90 + colIndex * 45)
                                         .graphicsLayer { scaleX = scale; scaleY = scale }
                                         .weight(1f)
                                         .height(137.dp)
@@ -811,7 +930,9 @@ internal fun HarborPlansScreen(
             sorted.forEachIndexed { index, plan ->
                 val selected = plan.id == selectedId
                 val primary = index == 0
-                PlanOption(plan, selected, primary) { onSelect(plan) }
+                Box(Modifier.harborEntrance(index * 80)) {
+                    PlanOption(plan, selected, primary) { onSelect(plan) }
+                }
             }
             Text(
                 "Todos os planos incluem: 1 Caixa Mensal Surpresa com livro e brindes exclusivos, acesso VIP à comunidade e rastreio detalhado em tempo real.",
@@ -1009,7 +1130,7 @@ internal fun HarborOffersScreen(
                 ) {
                     row.forEach { book ->
                         Card(
-                            Modifier.weight(1f).fillMaxHeight().shadow(5.dp, RoundedCornerShape(19.dp), ambientColor = Color(0x1A630626), spotColor = Color(0x2B630626))
+                            Modifier.weight(1f).fillMaxHeight().harborEntrance(rowIndex * 70 + row.indexOf(book) * 55).shadow(5.dp, RoundedCornerShape(19.dp), ambientColor = Color(0x1A630626), spotColor = Color(0x2B630626))
                                 .clip(RoundedCornerShape(19.dp))
                                 .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.5f), RoundedCornerShape(19.dp))
                                 .clickable { onAdd(book) },
@@ -1221,6 +1342,29 @@ private fun PixQrCode(matrix: Array<BooleanArray>, modifier: Modifier = Modifier
     }
 }
 
+@Composable
+private fun QrCodeWithScanLine(matrix: Array<BooleanArray>) {
+    val infinite = rememberInfiniteTransition(label = "qrScan")
+    val scan by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Reverse),
+        label = "scan"
+    )
+    Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
+        PixQrCode(matrix, Modifier.fillMaxSize())
+        Canvas(Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))) {
+            val y = size.height * scan
+            drawLine(
+                HarborColors.Wine.copy(alpha = 0.5f),
+                Offset(10f, y),
+                Offset(size.width - 10f, y),
+                strokeWidth = 2.dp.toPx()
+            )
+        }
+    }
+}
+
 /** Aba simulada de pagamento por Pix: QR Code aleatório, valor da compra e confirmação. */
 @Composable
 internal fun HarborPixScreen(
@@ -1252,7 +1396,7 @@ internal fun HarborPixScreen(
                         Modifier.padding(top = 4.dp), fontSize = 10.sp, color = HarborColors.Muted, textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(14.dp))
-                    PixQrCode(qr, Modifier.fillMaxWidth().aspectRatio(1f))
+                    QrCodeWithScanLine(qr)
                     Spacer(Modifier.height(14.dp))
                     Text("Valor a pagar", fontSize = 11.sp, color = HarborColors.Muted, letterSpacing = 0.4.sp)
                     Text(
@@ -1295,13 +1439,21 @@ internal fun HarborPixSuccessScreen(
     isSubscription: Boolean,
     onHome: () -> Unit,
 ) {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val checkScale by animateFloatAsState(if (shown) 1f else 0.3f, spring(dampingRatio = 0.42f, stiffness = 320f), label = "check")
+    val content by animateFloatAsState(if (shown) 1f else 0f, tween(460), label = "content")
+    val rise by animateFloatAsState(if (shown) 0f else 26f, tween(460), label = "rise")
     Box(
         Modifier.fillMaxSize().background(HarborColors.HeaderBrush).statusBarsPadding().navigationBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
-        Column(Modifier.padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier.padding(horizontal = 28.dp).graphicsLayer { alpha = content; translationY = rise },
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Box(
-                Modifier.size(88.dp).clip(CircleShape).background(HarborColors.Sand),
+                Modifier.size(88.dp).graphicsLayer { scaleX = checkScale; scaleY = checkScale }.clip(CircleShape).background(HarborColors.Sand),
                 contentAlignment = Alignment.Center
             ) {
                 Text("✓", color = HarborColors.WineOnLight, fontSize = 46.sp, fontWeight = FontWeight.Bold)
@@ -1570,8 +1722,8 @@ internal fun HarborOrderScreen(
             Image(painterResource(R.drawable.ilustracao_rastreamento), "Ilustração de caixa Harbor em transporte", Modifier.fillMaxWidth().height(102.dp).padding(top = 7.dp), contentScale = ContentScale.Fit)
             if (boxes.isEmpty()) ModernNotice("Exibindo pedido de exemplo — seus pedidos reais aparecem aqui após a compra.", HarborColors.Muted)
             val historico = boxes.ifEmpty { DemoPedidos }
-            historico.forEach { box ->
-                ModernCard(modifier = Modifier.padding(top = 10.dp)) {
+            historico.forEachIndexed { index, box ->
+                ModernCard(modifier = Modifier.padding(top = 10.dp).harborEntrance(index * 60)) {
                     Row(Modifier.fillMaxSize().padding(14.dp)) {
                         Box(Modifier.align(Alignment.CenterVertically).width(64.dp), contentAlignment = Alignment.Center) {
                             Image(painterResource(R.drawable.capa_jogos_vorazes), "Capa de ${box.livro?.titulo ?: "caixa Harbor"}", Modifier.width(58.dp).height(78.dp).clip(RoundedCornerShape(9.dp)).shadow(3.dp, RoundedCornerShape(9.dp)), contentScale = ContentScale.Crop)

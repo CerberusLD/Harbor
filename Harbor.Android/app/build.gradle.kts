@@ -8,7 +8,7 @@ android {
     namespace = "br.com.harbor"
     compileSdk = 35
     defaultConfig {
-        applicationId = "br.com.harbor"; minSdk = 29; targetSdk = 35; versionCode = 2; versionName = "0.1.2"
+        applicationId = "br.com.harbor"; minSdk = 29; targetSdk = 35; versionCode = 3; versionName = "0.1.3"
         val apiBaseUrl = (project.findProperty("harborApiBaseUrl") as String?) ?: "http://10.0.2.2:5080/"
         buildConfigField("String", "HARBOR_API_BASE_URL", "\"$apiBaseUrl\"")
     }

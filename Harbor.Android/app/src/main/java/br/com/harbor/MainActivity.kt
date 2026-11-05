@@ -9,6 +9,13 @@ import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -470,9 +477,18 @@ private fun HarborApp() {
             error = HarborColors.Wine
         )
     ) {
-        when (page) {
+        AnimatedContent(
+            targetState = page,
+            transitionSpec = {
+                (fadeIn(tween(260)) + slideInVertically(tween(300)) { it / 14 }).togetherWith(
+                    fadeOut(tween(160)) + slideOutVertically(tween(200)) { -it / 20 }
+                )
+            },
+            label = "harborPage"
+        ) { current ->
+            when (current) {
             HarborPage.Login, HarborPage.Cadastro -> HarborAuthScreen(
-                registration = page == HarborPage.Cadastro,
+                registration = current == HarborPage.Cadastro,
                 name = name,
                 onName = { name = it; authError = "" },
                 email = email,
@@ -486,7 +502,7 @@ private fun HarborApp() {
                 busy = busy,
                 message = authError.ifBlank { error },
                 onSubmit = {
-                    if (page == HarborPage.Cadastro) register() else runAction {
+                    if (current == HarborPage.Cadastro) register() else runAction {
                         val session = HarborApiClient.api.entrar(LoginBody(email.trim(), password))
                         saveSession(session.token, session.refreshToken)
                         page = HarborPage.Inicio
@@ -684,6 +700,7 @@ private fun HarborApp() {
                 selectedTab = HarborTab.Profile,
                 onTab = ::navigateTab,
             )
+        }
         }
     }
 

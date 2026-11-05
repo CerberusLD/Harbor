@@ -32,6 +32,8 @@ Com depuração sem fio, conecte antes com `adb connect <ip>:<porta>`; o aparelh
 - Curadoria com limite de 1 a 3 gêneros.
 - Consulta e escolha de plano, resumo das condições e confirmação em modo de demonstração.
 - **Pagamento Pix simulado**: ao finalizar a assinatura ou o pedido, surge uma aba com QR Code aleatório, o valor da compra e o botão “Confirmar pagamento”. Confirmar ativa a assinatura/registra o pedido na API; cancelar não faz nada.
+- **Animações e efeitos**: transição entre telas, botões com escala ao pressionar, entradas em cascata e linha de escaneamento no QR.
+- **Edições Passadas** em carrossel na aba Início (8 edições, rolagem automática e indicador).
 - Início, ofertas e edições do catálogo, detalhe de livro, pedidos/rastreio, comunidade, preferências, perfil e anonimização.
 - O histórico de pedidos mostra um pedido de exemplo enquanto a conta não tiver caixas, para apresentar o formato do acompanhamento.
 - Mensagens da comunidade e operações protegidas são autorizadas pela API. Uma assinatura só é ativada após resposta de pagamento aprovado.

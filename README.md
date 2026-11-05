@@ -36,7 +36,18 @@ Ao instalar, aceite a instalação de "app desconhecido" para o gerenciador que 
 
 ---
 
-## 🆕 Novidades da v0.1.2
+## 🆕 Novidades da v0.1.3
+
+- **Animações de interface**: transição entre telas (fade + deslize), botões com escala ao pressionar e cartões/listas com entrada em cascata.
+- **Edições Passadas em carrossel**: 8 edições com rolagem automática, indicador e *snap* ao deslizar (antes eram 3 capas fixas).
+- **Efeito de escaneamento** na aba de pagamento Pix: linha que percorre o QR Code.
+- **Tela de confirmação** com o “✓” animado (spring).
+
+Notas completas da versão: https://github.com/CerberusLD/Harbor/releases/tag/v0.1.3
+
+---
+
+## ✨ Novidades da v0.1.2
 
 - **Modo escuro** com alternância na tela de login e no cartão “Aparência” do perfil; a escolha fica salva no aparelho.
 - **Barra inferior** com “Ofertas” e “Categorias” trocadas de posição (Pedidos · Ofertas · Início · Categorias · Perfil).
