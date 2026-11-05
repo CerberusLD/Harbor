@@ -80,15 +80,16 @@ public static class HarborEndpoints
             var a = new Assinatura { ClienteId = id.Value, PlanoId = plano.Id, Status = "Pendente", CriadaEm = DateTime.UtcNow, ProximaRenovacao = DateTime.UtcNow.AddMonths(1) };
             db.Assinaturas.Add(a); await db.SaveChangesAsync(); return Results.Created($"/api/assinatura", new { a.Id, a.Status, plano = plano.Nome, plano.Preco });
         });
-        api.MapPost("/assinatura/{id:int}/pagamento", async (int id, PagamentoRequest r, HttpContext http, HarborDbContext db, IHostEnvironment env) =>
+        api.MapPost("/assinatura/{id:int}/pagamento", async (int id, PagamentoRequest r, HttpContext http, HarborDbContext db) =>
         {
-            if (!env.IsDevelopment()) return Results.Problem("Confirmação simulada disponível somente no ambiente Development.", statusCode: StatusCodes.Status503ServiceUnavailable);
+            // Endpoint acadêmico: aprovação simulada, sem provedor de pagamento real.
+            // Substituir por um provedor tokenizado antes de usar em produção.
             var clienteId = ClienteId(http); if (clienteId is null) return Results.Unauthorized();
             var a = await db.Assinaturas.Include(x => x.Plano).FirstOrDefaultAsync(x => x.Id == id && x.ClienteId == clienteId);
             if (a is null) return Results.NotFound();
             if (!r.Aprovado) return Results.BadRequest(new { mensagem = "Pagamento não aprovado; a assinatura permanece pendente." });
             a.Status = "Ativa"; a.ProximaRenovacao = DateTime.UtcNow.AddMonths(PeriodicidadeMeses(a.Plano!.Periodicidade));
-            await db.SaveChangesAsync(); return Results.Ok(new { a.Id, a.Status, a.ProximaRenovacao });
+            await db.SaveChangesAsync(); return Results.Ok(new { a.Id, a.Status, a.ProximaRenovacao, simulado = true });
         });
         api.MapPut("/assinatura/plano", async (AssinarRequest r, HttpContext http, HarborDbContext db) =>
         {
@@ -111,6 +112,36 @@ public static class HarborEndpoints
             var caixas = await db.Caixas.Include(x => x.Livro).Where(x => x.ClienteId == id).OrderByDescending(x => x.CriadaEm)
                 .Select(x => new { x.Id, x.Status, x.CodigoRastreio, x.CriadaEm, livro = x.Livro == null ? null : new { x.Livro.Id, x.Livro.Titulo, x.Livro.Autor, x.Livro.Sinopse, x.Livro.Categoria, x.Livro.Estoque } }).ToListAsync();
             return Results.Ok(caixas);
+        });
+        api.MapPost("/pedidos", async (PedidoRequest r, HttpContext http, HarborDbContext db) =>
+        {
+            var id = ClienteId(http); if (id is null) return Results.Unauthorized();
+            if (r.Itens is null || r.Itens.Count == 0) return Results.BadRequest(new { mensagem = "Informe ao menos um item no pedido." });
+            var pedidoId = (await db.Caixas.MaxAsync(x => (int?)x.PedidoId) ?? 0) + 1;
+            var total = 0m;
+            var caixas = new List<Caixa>();
+            foreach (var item in r.Itens)
+            {
+                var livro = await db.Livros.FirstOrDefaultAsync(x => x.Id == item.LivroId && x.Estoque >= item.Quantidade);
+                if (livro is null) return Results.BadRequest(new { mensagem = "Livro indisponível ou estoque insuficiente." });
+                livro.Estoque -= item.Quantidade;
+                total += 65.80m * item.Quantidade;
+                caixas.Add(new Caixa { ClienteId = id.Value, LivroId = livro.Id, PedidoId = pedidoId, Status = "Em preparação", Responsavel = "Harbor", CriadaEm = DateTime.UtcNow });
+            }
+            db.Caixas.AddRange(caixas);
+            await db.SaveChangesAsync();
+            return Results.Created($"/api/pedidos/{pedidoId}", new { id = pedidoId, status = "Pendente", total });
+        });
+        api.MapPost("/pedidos/{id:int}/pagamento", async (int id, PagamentoRequest r, HttpContext http, HarborDbContext db) =>
+        {
+            // Endpoint acadêmico: aprovação simulada, sem provedor de pagamento real.
+            var clienteId = ClienteId(http); if (clienteId is null) return Results.Unauthorized();
+            var caixas = await db.Caixas.Where(x => x.PedidoId == id && x.ClienteId == clienteId).ToListAsync();
+            if (caixas.Count == 0) return Results.NotFound(new { mensagem = "Pedido não encontrado." });
+            if (!r.Aprovado) return Results.BadRequest(new { mensagem = "Pagamento não aprovado; o pedido permanece pendente." });
+            foreach (var caixa in caixas) caixa.Status = "Pago";
+            await db.SaveChangesAsync();
+            return Results.Ok(new { id, status = "Pago", simulado = true });
         });
         api.MapPost("/avaliacoes", async (AvaliacaoRequest r, HttpContext http, HarborDbContext db) =>
         {
@@ -227,6 +258,8 @@ public sealed record EnvioRequest(string CodigoRastreio);
 public sealed record StatusRequest(string Status);
 public sealed record AvaliacaoRequest(int LivroId, int Nota, string? Comentario);
 public sealed record MensagemRequest(string Texto);
+public sealed record PedidoRequest(string Cep, string Cupom, string FormaPagamento, List<PedidoItemRequest> Itens);
+public sealed record PedidoItemRequest(int LivroId, int Quantidade);
 public sealed record PagamentoRequest(bool Aprovado);
 public sealed record CuradoriaRequest(int ClienteId);
 public sealed record TratativaRequest(string Resultado, string Detalhes);

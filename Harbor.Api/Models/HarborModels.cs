@@ -51,6 +51,7 @@ public sealed class Caixa
     public int Id { get; set; }
     public int ClienteId { get; set; }
     public int LivroId { get; set; }
+    public int PedidoId { get; set; }
     public string Status { get; set; } = "Em preparação";
     public string CodigoRastreio { get; set; } = "";
     public string Responsavel { get; set; } = "";

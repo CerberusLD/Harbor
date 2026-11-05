@@ -22,6 +22,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS RefreshTokens (Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ClienteId INTEGER NOT NULL, TokenHash TEXT NOT NULL, CriadaEm TEXT NOT NULL, ExpiraEm TEXT NOT NULL, Revogada INTEGER NOT NULL, FOREIGN KEY (ClienteId) REFERENCES Clientes (Id) ON DELETE CASCADE)");
     db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_RefreshTokens_TokenHash ON RefreshTokens (TokenHash)");
     MigrarDadosPessoais(db);
+    GarantirColunaPedido(db);
     if (!db.Planos.Any())
     {
         db.Planos.AddRange(
@@ -99,6 +100,27 @@ static void MigrarDadosPessoais(HarborDbContext db)
     using var indexes = connection.CreateCommand();
     indexes.CommandText = "DROP INDEX IF EXISTS IX_Clientes_Email; CREATE UNIQUE INDEX IF NOT EXISTS IX_Clientes_EmailIndice ON Clientes (EmailIndice)";
     indexes.ExecuteNonQuery();
+    connection.Close();
+}
+
+static void GarantirColunaPedido(HarborDbContext db)
+{
+    var connection = db.Database.GetDbConnection();
+    connection.Open();
+    using (var columns = connection.CreateCommand())
+    {
+        columns.CommandText = "PRAGMA table_info('Caixas')";
+        using var reader = columns.ExecuteReader();
+        var exists = false;
+        while (reader.Read()) if (reader.GetString(1) == "PedidoId") exists = true;
+        reader.Close();
+        if (!exists)
+        {
+            using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE Caixas ADD COLUMN PedidoId INTEGER NOT NULL DEFAULT 0";
+            alter.ExecuteNonQuery();
+        }
+    }
     connection.Close();
 }
 
