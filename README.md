@@ -36,6 +36,20 @@ Ao instalar, aceite a instalação de "app desconhecido" para o gerenciador que 
 
 ---
 
+## 🆕 Novidades da v0.1.2
+
+- **Modo escuro** com alternância na tela de login e no cartão “Aparência” do perfil; a escolha fica salva no aparelho.
+- **Barra inferior** com “Ofertas” e “Categorias” trocadas de posição (Pedidos · Ofertas · Início · Categorias · Perfil).
+- **Ofertas**: cartões com altura intrínseca, sem texto cortado.
+- **Checkout**: campos de CEP e Cupom redesenhados e legíveis.
+- **Pagamento Pix simulado**: aba com QR Code aleatório, valor da compra e botão “Confirmar pagamento” (cancelar não faz nada), além da tela de confirmação.
+- **Histórico de pedidos** com pedido de exemplo enquanto a conta está vazia.
+- **API**: `POST /api/pedidos` e `POST /api/pedidos/{id}/pagamento`; pagamento simulado disponible fora do `Development` (`simulado: true`).
+
+Notas completas da versão: https://github.com/CerberusLD/Harbor/releases/tag/v0.1.2
+
+---
+
 ## 🗂 Estrutura
 
 ```
