@@ -30,7 +30,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 private enum class HarborPage {
     Login, Cadastro, ErroCadastro, PerfilInicial, Preferencias, Planos,
-    Checkout, Inicio, Ofertas, Caixa, Rastreamento, Comunidade, ComunidadeQr, Perfil
+    Checkout, Pix, PixSucesso, Inicio, Ofertas, Caixa, Rastreamento, Comunidade, ComunidadeQr, Perfil
 }
 
 internal data class LivroUi(
@@ -68,6 +68,8 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = android.graphics.Color.rgb(139, 17, 54)
         window.navigationBarColor = android.graphics.Color.rgb(86, 6, 31)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        // Restaura o tema escolhido pelo leitor antes de compor a primeira tela.
+        HarborColors.setDarkMode(getSharedPreferences("harbor", 0).getBoolean("dark_mode", false))
         setContent { HarborApp() }
     }
 }
@@ -171,6 +173,9 @@ private fun HarborApp() {
     var checkoutCep by remember { mutableStateOf("") }
     var checkoutCoupon by remember { mutableStateOf("") }
     var paymentMethod by remember { mutableStateOf("Cartão") }
+    var pixAmount by remember { mutableStateOf(0.0) }
+    var pixCode by remember { mutableStateOf("") }
+    var pixIsSubscription by remember { mutableStateOf(false) }
     var reviewTarget by remember { mutableStateOf<CaixaUi?>(null) }
     var reviewStars by remember { mutableIntStateOf(5) }
     var reviewText by remember { mutableStateOf("") }
@@ -376,7 +381,15 @@ private fun HarborApp() {
         }
     }
 
-    fun finishCheckout() {
+    /** Gera um payload Pix "copia e cola" aleatório, apenas para a demonstração. */
+    fun newPixCode(): String {
+        val chave = (1..36).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
+        val crc = (1..4).map { "0123456789ABCDEF".random() }.joinToString("")
+        return "00020126580014BR.GOV.BCB.PIX0136${chave}52040000530398654${"%.2f".format(pixAmount).replace(".", "").padStart(4, '0')}5802BR5913HARBOR6009SAO PAULO62070503***6304$crc"
+    }
+
+    /** Abre a aba de pagamento Pix (simulada) com o valor total calculado no checkout. */
+    fun finishCheckout(total: Double) {
         if (checkoutCep.length < 8 && cart.isNotEmpty()) {
             error = "Informe um CEP válido para calcular a entrega."
             return
@@ -385,12 +398,27 @@ private fun HarborApp() {
             error = "Escolha uma forma de pagamento."
             return
         }
+        pixIsSubscription = cart.isEmpty() && selectedPlan != null
+        pixAmount = total
+        pixCode = newPixCode()
+        error = ""
+        page = HarborPage.Pix
+    }
+
+    /** Confirma o pagamento simulado e conclui a assinatura ou o pedido na API. */
+    fun confirmPix() {
         runAction {
-            val plan = selectedPlan
-            if (plan != null && cart.isEmpty()) {
+            if (pixIsSubscription) {
+                val plan = selectedPlan
+                if (plan == null) {
+                    error = "Escolha um plano para continuar."
+                    return@runAction
+                }
                 val subscription = HarborApiClient.api.assinar("Bearer $token", AssinarBody(plan.id))
                 HarborApiClient.api.confirmarPagamento("Bearer $token", subscription.id, PagamentoBody(aprovado = true))
-                subscriptionStatus = "Ativa"
+                val status = runCatching { HarborApiClient.api.assinatura("Bearer $token") }.getOrNull()
+                subscriptionStatus = status?.get("status")?.toString() ?: "Ativa"
+                renewalDate = status?.get("proximaRenovacao")?.toString()?.take(10).orEmpty()
             } else {
                 val order = HarborApiClient.api.criarPedido(
                     "Bearer $token",
@@ -405,11 +433,43 @@ private fun HarborApp() {
                 cart = emptyMap()
             }
             fetchBoxes()
-            page = HarborPage.Inicio
+            page = HarborPage.PixSucesso
         }
     }
 
-    MaterialTheme(colorScheme = lightColorScheme(primary = HarborColors.Wine, onPrimary = HarborColors.Sand, secondary = HarborColors.Gold, background = HarborColors.Cream, surface = HarborColors.Paper, onSurface = HarborColors.Ink, error = HarborColors.Wine)) {
+    /** Cancela o pagamento: a assinatura não é ativada e o pedido não é criado. */
+    fun cancelPix() {
+        error = if (pixIsSubscription) "Pagamento cancelado. A assinatura não foi ativada." else "Pagamento cancelado. O pedido não foi criado."
+        page = HarborPage.Checkout
+    }
+
+    val darkTheme = HarborColors.isDark
+    MaterialTheme(
+        colorScheme = if (darkTheme) darkColorScheme(
+            primary = HarborColors.WineSolid,
+            onPrimary = HarborColors.Sand,
+            secondary = HarborColors.Gold,
+            onSecondary = HarborColors.WineOnLight,
+            background = HarborColors.Cream,
+            onBackground = HarborColors.Ink,
+            surface = HarborColors.Paper,
+            onSurface = HarborColors.Ink,
+            surfaceVariant = HarborColors.SurfaceWarm,
+            onSurfaceVariant = HarborColors.Ink,
+            outline = HarborColors.RoseLine,
+            outlineVariant = HarborColors.RoseLine,
+            error = HarborColors.Wine,
+            onError = HarborColors.Sand
+        ) else lightColorScheme(
+            primary = HarborColors.Wine,
+            onPrimary = HarborColors.Sand,
+            secondary = HarborColors.Gold,
+            background = HarborColors.Cream,
+            surface = HarborColors.Paper,
+            onSurface = HarborColors.Ink,
+            error = HarborColors.Wine
+        )
+    ) {
         when (page) {
             HarborPage.Login, HarborPage.Cadastro -> HarborAuthScreen(
                 registration = page == HarborPage.Cadastro,
@@ -506,8 +566,25 @@ private fun HarborApp() {
                 onPayment = { paymentMethod = it },
                 busy = busy,
                 message = error,
-                onFinish = { finishCheckout() },
+                onFinish = { finishCheckout(it) },
                 onBack = { page = if (cart.isNotEmpty()) HarborPage.Ofertas else HarborPage.Planos },
+            )
+
+            HarborPage.Pix -> HarborPixScreen(
+                amount = pixAmount,
+                code = pixCode,
+                isSubscription = pixIsSubscription,
+                busy = busy,
+                message = error,
+                onConfirm = { confirmPix() },
+                onCancel = { cancelPix() },
+                onBack = { page = HarborPage.Checkout },
+            )
+
+            HarborPage.PixSucesso -> HarborPixSuccessScreen(
+                amount = pixAmount,
+                isSubscription = pixIsSubscription,
+                onHome = { error = ""; page = HarborPage.Inicio },
             )
 
             HarborPage.Inicio -> HarborDashboard(

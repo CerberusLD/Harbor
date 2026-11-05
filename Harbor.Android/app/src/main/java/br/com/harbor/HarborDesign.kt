@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -32,24 +33,48 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
 
+/**
+ * Harbor palette. The brand wine/sand tones stay recognisable in both themes while
+ * surfaces, text and borders switch through [isDark]. The property is a Compose state,
+ * so every screen that reads a colour is recomposed as soon as the theme changes.
+ */
 internal object HarborColors {
-    val Wine = Color(0xFF630626)
-    val WineDark = Color(0xFF4A0218)
-    val WineTop = Color(0xFF8B1136)
-    val Cream = Color(0xFFFBF7F2)
-    val Sand = Color(0xFFFDE6C2)
-    val SandDeep = Color(0xFFF3C888)
-    val Paper = Color(0xFFFFFEFC)
-    val Ink = Color(0xFF271C1E)
-    val Muted = Color(0xFF86707A)
-    val Gold = Color(0xFFC79A4B)
-    val GoldSoft = Color(0xFFF4E3C2)
-    val RoseLine = Color(0xFFEAD3D4)
-    val Mint = Color(0xFF2E7D5B)
-    val Amber = Color(0xFFB7791F)
+    var isDark by mutableStateOf(false)
+        private set
 
-    val HeaderBrush = Brush.verticalGradient(listOf(Color(0xFF8B1136), Color(0xFF630626), Color(0xFF4A0218)))
-    val BottomBrush = Brush.verticalGradient(listOf(Color(0xFF7B0F30), Color(0xFF56061F)))
+    fun setDarkMode(enabled: Boolean) {
+        isDark = enabled
+    }
+
+    private fun palette(light: Color, dark: Color): Color = if (isDark) dark else light
+
+    /** Brand accent used for headings, icons and text. */
+    val Wine get() = palette(Color(0xFF630626), Color(0xFFE9B6C4))
+
+    /** Solid brand colour used behind buttons and selected cards. */
+    val WineSolid get() = palette(Color(0xFF630626), Color(0xFF74102E))
+    val WineDark get() = palette(Color(0xFF4A0218), Color(0xFF120A0E))
+    val WineTop get() = palette(Color(0xFF8B1136), Color(0xFF5A0C22))
+    val Cream get() = palette(Color(0xFFFBF7F2), Color(0xFF151012))
+    val Sand get() = Color(0xFFFDE6C2)
+    val SandDeep get() = palette(Color(0xFFF3C888), Color(0xFF3A272E))
+    val Paper get() = palette(Color(0xFFFFFEFC), Color(0xFF22181C))
+    val Ink get() = palette(Color(0xFF271C1E), Color(0xFFF4EAE5))
+    val Muted get() = palette(Color(0xFF86707A), Color(0xFFC0A7B0))
+    val Gold get() = palette(Color(0xFFC79A4B), Color(0xFFE0B366))
+    val GoldSoft get() = palette(Color(0xFFF4E3C2), Color(0xFF4A3520))
+    val RoseLine get() = palette(Color(0xFFEAD3D4), Color(0xFF4A343C))
+    val Mint get() = palette(Color(0xFF2E7D5B), Color(0xFF70D6A9))
+    val Amber get() = palette(Color(0xFFB7791F), Color(0xFFE8B45F))
+
+    /** Warmed surface used by rows, inputs and low-emphasis cards. */
+    val SurfaceWarm get() = palette(Color(0xFFFCF7F0), Color(0xFF2A1E23))
+    val Field get() = palette(Color(0xFFFFFFFF), Color(0xFF302329))
+    val WineOnLight get() = Color(0xFF630626)
+    val OnWine get() = Color(0xFFFDE6C2)
+
+    val HeaderBrush get() = Brush.verticalGradient(listOf(Color(0xFF8B1136), Color(0xFF630626), Color(0xFF4A0218)))
+    val BottomBrush get() = Brush.verticalGradient(listOf(Color(0xFF7B0F30), Color(0xFF56061F)))
 }
 
 internal enum class HarborTab { Orders, Categories, Home, Offers, Profile }
@@ -73,6 +98,71 @@ internal fun HarborBrandLogo(modifier: Modifier = Modifier) {
         modifier = modifier,
         contentScale = ContentScale.Fit
     )
+}
+
+private fun toggleHarborTheme(context: android.content.Context) {
+    val enabled = !HarborColors.isDark
+    HarborColors.setDarkMode(enabled)
+    context.getSharedPreferences("harbor", 0).edit().putBoolean("dark_mode", enabled).apply()
+}
+
+/** Compact theme control used over the wine header (login and onboarding). */
+@Composable
+internal fun HarborThemeToggle(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val dark = HarborColors.isDark
+    Box(
+        modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.12f))
+            .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+            .clickable { toggleHarborTheme(context) }
+            .semantics { contentDescription = if (dark) "Ativar modo claro" else "Ativar modo escuro" },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(if (dark) "☀" else "☾", color = HarborColors.Sand, fontSize = 17.sp)
+    }
+}
+
+/** Appearance card for the profile screen. */
+@Composable
+internal fun HarborAppearanceCard(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val dark = HarborColors.isDark
+    ModernCard(modifier) {
+        Column(Modifier.padding(15.dp)) {
+            HarborSectionLabel("Aparência")
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(HarborColors.SurfaceWarm)
+                    .clickable { toggleHarborTheme(context) }
+                    .padding(horizontal = 13.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Modo escuro", color = HarborColors.Wine, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (dark) "Ativado — tons escuros confortáveis para a leitura" else "Desativado — tema claro vinho e creme",
+                        color = HarborColors.Muted, fontSize = 10.sp, lineHeight = 13.sp
+                    )
+                }
+                Switch(
+                    checked = dark,
+                    onCheckedChange = { toggleHarborTheme(context) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = HarborColors.Sand,
+                        checkedTrackColor = HarborColors.WineSolid,
+                        uncheckedThumbColor = HarborColors.Paper,
+                        uncheckedTrackColor = HarborColors.RoseLine,
+                        uncheckedBorderColor = HarborColors.Muted.copy(alpha = 0.5f)
+                    )
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -118,9 +208,9 @@ internal fun HarborDashboardFrame(
 internal fun HarborBottomBar(selected: HarborTab, onSelect: (HarborTab) -> Unit) {
     val tabs = listOf(
         HarborTab.Orders to "Pedidos",
-        HarborTab.Categories to "Categorias",
-        HarborTab.Home to "Início",
         HarborTab.Offers to "Ofertas",
+        HarborTab.Home to "Início",
+        HarborTab.Categories to "Categorias",
         HarborTab.Profile to "Perfil",
     )
     // The gradient paints behind the system navigation bar, so the bar always touches
@@ -228,6 +318,7 @@ internal fun HarborAuthScreen(
             drawCircle(HarborColors.Sand.copy(alpha = 0.08f), radius = size.width * .45f, center = Offset(size.width * -.15f, size.height * .65f))
         }
         val formTop = if (maxHeight < 740.dp) 185.dp else 213.dp
+        HarborThemeToggle(Modifier.align(Alignment.TopEnd).padding(top = 18.dp, end = 18.dp))
         HarborBrandLogo(Modifier.align(Alignment.TopCenter).padding(top = 74.dp).width(148.dp).height(59.dp))
         Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 28.dp).padding(top = formTop)) {
             Text(if (registration) "Cadastre-se" else "Login", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = HarborColors.Sand, fontFamily = FontFamily.Serif)
@@ -304,19 +395,19 @@ private fun HarborAuthField(
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth().height(44.dp)
+        modifier = Modifier.fillMaxWidth().height(46.dp)
             .clip(RoundedCornerShape(15.dp))
-            .background(Color.White.copy(alpha = 0.96f))
-            .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.6f), RoundedCornerShape(15.dp))
+            .background(HarborColors.Field)
+            .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.7f), RoundedCornerShape(15.dp))
             .semantics { this.contentDescription = contentDescription },
         singleLine = true,
-        textStyle = TextStyle(fontSize = 13.sp, color = HarborColors.Wine, fontFamily = FontFamily.SansSerif),
+        textStyle = TextStyle(fontSize = 13.sp, color = HarborColors.Ink, fontFamily = FontFamily.SansSerif),
         keyboardOptions = KeyboardOptions(keyboardType = keyboard),
         visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
         decorationBox = { inner ->
             Row(Modifier.fillMaxSize().padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
-                    if (value.isEmpty()) Text(placeholder, color = Color(0xFF9C8488), fontSize = 13.sp)
+                    if (value.isEmpty()) Text(placeholder, color = HarborColors.Muted, fontSize = 13.sp)
                     inner()
                 }
             }
@@ -441,17 +532,17 @@ internal fun HarborLightField(
         Text(label, Modifier.padding(start = 5.dp, bottom = 4.dp), color = HarborColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp)
         BasicTextField(
             value, onValueChange,
-            Modifier.fillMaxWidth().defaultMinSize(minHeight = 41.dp)
+            Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .background(if (enabled) Color.White else Color(0xFFF3ECE6))
+                .background(if (enabled) HarborColors.Field else HarborColors.SurfaceWarm.copy(alpha = 0.55f))
                 .border(1.dp, HarborColors.RoseLine.copy(alpha = if (enabled) 0.65f else 0.25f), RoundedCornerShape(13.dp))
-                .padding(horizontal = 13.dp, vertical = 11.dp)
+                .padding(horizontal = 13.dp, vertical = 12.dp)
                 .semantics { contentDescription = label },
             enabled = enabled,
             singleLine = singleLine,
-            textStyle = TextStyle(fontSize = 13.sp, color = HarborColors.Wine, fontFamily = FontFamily.SansSerif),
+            textStyle = TextStyle(fontSize = 13.sp, color = HarborColors.Ink, fontFamily = FontFamily.SansSerif),
             keyboardOptions = KeyboardOptions(keyboardType = keyboard),
-            decorationBox = { inner -> Box { if (value.isEmpty()) Text(label, color = Color(0xFF9C8488), fontSize = 12.sp); inner() } }
+            decorationBox = { inner -> Box { if (value.isEmpty()) Text(label, color = HarborColors.Muted, fontSize = 12.sp); inner() } }
         )
     }
 }
@@ -467,8 +558,8 @@ internal fun HarborPrimaryButton(text: String, busy: Boolean = false, onClick: (
         enabled = !busy,
         shape = RoundedCornerShape(24.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = HarborColors.Wine,
-            disabledContainerColor = HarborColors.Wine.copy(alpha = 0.55f),
+            containerColor = HarborColors.WineSolid,
+            disabledContainerColor = HarborColors.WineSolid.copy(alpha = 0.55f),
             contentColor = HarborColors.Sand,
             disabledContentColor = HarborColors.Sand.copy(alpha = 0.7f)
         ),
@@ -528,8 +619,8 @@ private fun GreetingCard(name: String) {
     Row(
         Modifier.fillMaxWidth().height(122.dp).shadow(6.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x33630626))
             .clip(RoundedCornerShape(22.dp))
-            .background(HarborColors.Sand)
-            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
+            .background(HarborColors.SurfaceWarm)
+            .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
             .padding(start = 27.dp, end = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -547,7 +638,7 @@ private fun DashboardSlide(page: Int, box: CaixaUi?, onAction: (Int) -> Unit) {
         0 -> Card(
             Modifier.fillMaxSize().shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = HarborColors.Wine)
+            colors = CardDefaults.cardColors(containerColor = HarborColors.WineSolid)
         ) {
             Column(Modifier.fillMaxSize().padding(horizontal = 15.dp, vertical = 11.dp)) {
                 Text("A Caixa desse mês", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, color = HarborColors.Sand)
@@ -564,7 +655,7 @@ private fun DashboardSlide(page: Int, box: CaixaUi?, onAction: (Int) -> Unit) {
         1 -> Card(
             Modifier.fillMaxSize().shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = HarborColors.Wine)
+            colors = CardDefaults.cardColors(containerColor = HarborColors.WineSolid)
         ) {
             Box(Modifier.fillMaxSize()) {
                 Image(painterResource(R.drawable.promo_shelf), "Estante de livros clássicos", Modifier.fillMaxWidth().height(106.dp).align(Alignment.TopCenter), contentScale = ContentScale.Crop)
@@ -576,7 +667,7 @@ private fun DashboardSlide(page: Int, box: CaixaUi?, onAction: (Int) -> Unit) {
         2 -> Card(
             Modifier.fillMaxSize().shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = HarborColors.Wine)
+            colors = CardDefaults.cardColors(containerColor = HarborColors.WineSolid)
         ) {
             Image(painterResource(R.drawable.promo_offers_art), "Ilustração das ofertas limitadas", Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 8.dp), contentScale = ContentScale.Fit)
             Box(Modifier.fillMaxSize().clickable { onAction(2) }.semantics { contentDescription = "Abrir ofertas limitadas" })
@@ -584,12 +675,12 @@ private fun DashboardSlide(page: Int, box: CaixaUi?, onAction: (Int) -> Unit) {
         3 -> Card(
             Modifier.fillMaxSize().shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x33C79A4B)),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = HarborColors.Sand)
+            colors = CardDefaults.cardColors(containerColor = HarborColors.SurfaceWarm)
         ) {
             Row(Modifier.fillMaxSize().clickable { onAction(3) }.padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Clube da leitura", fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Bold, fontSize = 21.sp, color = HarborColors.Wine, textAlign = TextAlign.Center)
-                    Button(onClick = { onAction(3) }, Modifier.padding(top = 8.dp).width(165.dp).height(34.dp), shape = RoundedCornerShape(20.dp), colors = ButtonDefaults.buttonColors(containerColor = HarborColors.Wine, contentColor = HarborColors.Sand)) { Text("Faça Parte", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                    Button(onClick = { onAction(3) }, Modifier.padding(top = 8.dp).width(165.dp).height(34.dp), shape = RoundedCornerShape(20.dp), colors = ButtonDefaults.buttonColors(containerColor = HarborColors.WineSolid, contentColor = HarborColors.Sand)) { Text("Faça Parte", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                     Text("●   ◎   ♪", Modifier.padding(top = 8.dp), color = HarborColors.Wine, fontSize = 13.sp)
                 }
                 Image(painterResource(R.drawable.promo_club_books), "Estante colorida da comunidade de leitura", Modifier.width(125.dp).fillMaxHeight(), contentScale = ContentScale.Crop)
@@ -598,7 +689,7 @@ private fun DashboardSlide(page: Int, box: CaixaUi?, onAction: (Int) -> Unit) {
         5 -> Card(
             Modifier.fillMaxSize().shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = HarborColors.Wine)
+            colors = CardDefaults.cardColors(containerColor = HarborColors.WineSolid)
         ) {
             Row(Modifier.fillMaxSize().clickable { onAction(5) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Image(
@@ -619,7 +710,7 @@ private fun DashboardSlide(page: Int, box: CaixaUi?, onAction: (Int) -> Unit) {
         else -> Card(
             Modifier.fillMaxSize().shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x2B630626), spotColor = Color(0x40630626)),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = HarborColors.Wine)
+            colors = CardDefaults.cardColors(containerColor = HarborColors.WineSolid)
         ) {
             Box(Modifier.fillMaxSize()) {
                 Canvas(Modifier.fillMaxSize()) {
@@ -673,7 +764,7 @@ internal fun HarborGenreScreen(
                                         .clickable { onToggle(name) }
                                         .semantics { contentDescription = "$name${if (active) ", selecionado" else ", não selecionado"}"; role = Role.Checkbox; this.selected = active },
                                     shape = RoundedCornerShape(18.dp),
-                                    colors = CardDefaults.cardColors(containerColor = if (active) HarborColors.Wine else Color(0xFFFFE8CC)),
+                                    colors = CardDefaults.cardColors(containerColor = if (active) HarborColors.WineSolid else HarborColors.SurfaceWarm),
                                     elevation = CardDefaults.cardElevation(if (active) 6.dp else 3.dp)
                                 ) {
                                     Box(
@@ -683,7 +774,7 @@ internal fun HarborGenreScreen(
                                         Image(painterResource(asset), "Ilustração do gênero $name", Modifier.align(Alignment.TopCenter).size(79.dp), contentScale = ContentScale.Fit)
                                         if (active) {
                                             Box(Modifier.align(Alignment.Center).offset(y = (-11).dp).size(24.dp).shadow(3.dp, CircleShape).clip(CircleShape).background(HarborColors.Sand), contentAlignment = Alignment.Center) {
-                                                Text(if (name in setOf("Fantasia", "Suspense")) "◉" else "✓", color = HarborColors.Wine, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                                Text(if (name in setOf("Fantasia", "Suspense")) "◉" else "✓", color = HarborColors.WineOnLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                         Text(name, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 5.dp), textAlign = TextAlign.Center, fontSize = 11.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) HarborColors.Sand else HarborColors.Wine, maxLines = 2)
@@ -743,15 +834,15 @@ private fun PlanOption(plan: PlanoReply, selected: Boolean, recommended: Boolean
             .padding(top = if (recommended) 14.dp else 10.dp, bottom = 2.dp)
             .shadow(if (selected) 8.dp else 4.dp, shape, ambientColor = Color(0x2B630626), spotColor = if (selected) Color(0x40630626) else Color(0x2B630626))
             .clip(shape)
-            .background(if (selected) HarborColors.Wine else HarborColors.Sand)
+            .background(if (selected) HarborColors.WineSolid else HarborColors.SurfaceWarm)
             .border(if (selected) 2.dp else 1.dp, borderColor, shape)
             .clickable { onClick() },
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = if (selected) HarborColors.Wine else HarborColors.Sand),
+        colors = CardDefaults.cardColors(containerColor = if (selected) HarborColors.WineSolid else HarborColors.SurfaceWarm),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 15.dp).height(if (recommended) 154.dp else 61.dp)) {
-            if (selected) Box(Modifier.align(Alignment.TopStart).offset(x = (-5).dp, y = (-2).dp).size(22.dp).shadow(3.dp, CircleShape).clip(CircleShape).background(HarborColors.Sand), contentAlignment = Alignment.Center) { Text("✓", color = HarborColors.Wine, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+            if (selected) Box(Modifier.align(Alignment.TopStart).offset(x = (-5).dp, y = (-2).dp).size(22.dp).shadow(3.dp, CircleShape).clip(CircleShape).background(HarborColors.Sand), contentAlignment = Alignment.Center) { Text("✓", color = HarborColors.WineOnLight, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
             Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = if (recommended) Arrangement.Top else Arrangement.Center) {
                 Text(plan.nome, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontFamily = FontFamily.Serif, fontSize = if (recommended) 17.sp else 14.sp, fontWeight = FontWeight.Bold, color = if (selected) HarborColors.Sand else HarborColors.Wine)
                 Text("R$ ${"%.2f".format(monthly)} / mês", Modifier.padding(top = if (recommended) 3.dp else 0.dp), fontSize = if (recommended) 15.sp else 14.sp, fontWeight = FontWeight.Bold, color = if (selected) HarborColors.Sand else HarborColors.Wine)
@@ -761,7 +852,7 @@ private fun PlanOption(plan: PlanoReply, selected: Boolean, recommended: Boolean
                     }
                 }
             }
-            if (recommended) Box(Modifier.align(Alignment.CenterEnd).offset(x = 2.dp, y = (-15).dp).size(41.dp).shadow(4.dp, CircleShape).clip(CircleShape).background(Color(0xFFE7C969)), contentAlignment = Alignment.Center) { Text("Mais\nVendido", color = HarborColors.Wine, fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, lineHeight = 9.sp) }
+            if (recommended) Box(Modifier.align(Alignment.CenterEnd).offset(x = 2.dp, y = (-15).dp).size(41.dp).shadow(4.dp, CircleShape).clip(CircleShape).background(Color(0xFFE7C969)), contentAlignment = Alignment.Center) { Text("Mais\nVendido", color = HarborColors.WineOnLight, fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, lineHeight = 9.sp) }
             if (!recommended) Text(if (plan.periodicidade.equals("Trimestral", true)) "✉" else "✉", Modifier.align(Alignment.CenterEnd), color = HarborColors.Wine, fontSize = 18.sp)
         }
     }
@@ -813,6 +904,7 @@ internal fun HarborProfileScreen(
                     if (subscriptionStatus.equals("Ativa", true)) ModernActionRow("Cancelar assinatura", "Deixa de renovar na próxima cobrança", "›", onCancel)
                 }
             }
+            HarborAppearanceCard(Modifier.padding(top = 11.dp))
             ModernCard(modifier = Modifier.padding(top = 11.dp)) {
                 Column(Modifier.padding(15.dp)) {
                     HarborSectionLabel("Atalhos rápidos")
@@ -826,7 +918,7 @@ internal fun HarborProfileScreen(
                     onClick = onDelete,
                     Modifier.weight(1f).height(42.dp),
                     shape = RoundedCornerShape(21.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFAECED), contentColor = Color(0xFF943A4A))
+                    colors = ButtonDefaults.buttonColors(containerColor = HarborColors.Wine.copy(alpha = 0.12f), contentColor = HarborColors.Wine)
                 ) { Text("Excluir conta", fontSize = 11.sp, fontWeight = FontWeight.Medium) }
                 Button(
                     onClick = onLogout,
@@ -842,7 +934,7 @@ internal fun HarborProfileScreen(
 @Composable
 internal fun ModernActionRow(title: String, subtitle: String, glyph: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFFCF7F0)).clickable(onClick = onClick).padding(horizontal = 13.dp, vertical = 11.dp),
+        Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(14.dp)).background(HarborColors.SurfaceWarm).clickable(onClick = onClick).padding(horizontal = 13.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
@@ -855,16 +947,12 @@ internal fun ModernActionRow(title: String, subtitle: String, glyph: String, onC
 
 @Composable
 internal fun StatusChip(status: String) {
-    val bg = when {
-        status.equals("Ativa", true) -> Color(0xFFE7F3EC)
-        status.equals("Pendente", true) -> Color(0xFFFFF4DA)
-        else -> Color(0xFFF6E9EA)
-    }
     val tint = when {
         status.equals("Ativa", true) -> HarborColors.Mint
         status.equals("Pendente", true) -> HarborColors.Amber
         else -> HarborColors.Wine
     }
+    val bg = tint.copy(alpha = if (HarborColors.isDark) 0.2f else 0.12f)
     Box(
         Modifier.clip(CircleShape).background(bg).padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
@@ -878,7 +966,7 @@ private fun ProfileAction(title: String, subtitle: String, icon: Int, onClick: (
     Row(
         Modifier.fillMaxWidth().padding(vertical = 6.dp)
             .clip(RoundedCornerShape(15.dp))
-            .background(Color(0xFFFCF7F0))
+            .background(HarborColors.SurfaceWarm)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -915,32 +1003,35 @@ internal fun HarborOffersScreen(
             }
             val catalog = if (books.isEmpty()) emptyList() else books
             catalog.chunked(2).forEachIndexed { rowIndex, row ->
-                Row(Modifier.fillMaxWidth().padding(top = 11.dp), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 11.dp).height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
                     row.forEach { book ->
                         Card(
-                            Modifier.weight(1f).height(211.dp).shadow(5.dp, RoundedCornerShape(19.dp), ambientColor = Color(0x1A630626), spotColor = Color(0x2B630626))
+                            Modifier.weight(1f).fillMaxHeight().shadow(5.dp, RoundedCornerShape(19.dp), ambientColor = Color(0x1A630626), spotColor = Color(0x2B630626))
                                 .clip(RoundedCornerShape(19.dp))
                                 .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.5f), RoundedCornerShape(19.dp))
                                 .clickable { onAdd(book) },
                             shape = RoundedCornerShape(19.dp),
-                            colors = CardDefaults.cardColors(containerColor = HarborColors.Sand.copy(alpha = 0.55f)),
+                            colors = CardDefaults.cardColors(containerColor = HarborColors.SurfaceWarm),
                             elevation = CardDefaults.cardElevation(0.dp)
                         ) {
-                            Column(Modifier.fillMaxSize().padding(9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(Modifier.fillMaxWidth().padding(9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                     Image(painterResource(R.drawable.capa_atlantida), null, Modifier.width(46.dp).height(55.dp).clip(RoundedCornerShape(8.dp)).shadow(3.dp, RoundedCornerShape(8.dp)))
                                     Spacer(Modifier.width(7.dp))
                                     Image(painterResource(R.drawable.capa_jogos_vorazes), null, Modifier.width(46.dp).height(55.dp).clip(RoundedCornerShape(8.dp)).shadow(3.dp, RoundedCornerShape(8.dp)))
                                 }
-                                Text("Caixa ${String.format("%02d", rowIndex * 2 + row.indexOf(book) + 1)} • Edição limitada", Modifier.padding(top = 6.dp), fontSize = 10.sp, lineHeight = 12.sp, color = HarborColors.Wine, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2)
-                                Text(book.titulo, Modifier.padding(top = 3.dp), fontSize = 9.sp, lineHeight = 11.sp, color = HarborColors.Muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text("R$ 65,80", Modifier.padding(top = 3.dp), fontSize = 12.sp, color = HarborColors.Wine, fontWeight = FontWeight.Bold)
-                                Text("Últimas ${book.estoque.coerceAtMost(5)} unidades", Modifier.padding(top = 1.dp), fontSize = 8.sp, color = HarborColors.Amber, textAlign = TextAlign.Center)
-                                Spacer(Modifier.weight(1f))
-                                Button(onClick = { onAdd(book) }, Modifier.fillMaxWidth().height(30.dp), contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = HarborColors.Wine, contentColor = HarborColors.Sand)) {
+                                Text("Caixa ${String.format("%02d", rowIndex * 2 + row.indexOf(book) + 1)} • Edição limitada", Modifier.padding(top = 6.dp), fontSize = 10.sp, lineHeight = 13.sp, color = HarborColors.Wine, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2)
+                                Text(book.titulo, Modifier.padding(top = 3.dp), fontSize = 9.sp, lineHeight = 12.sp, color = HarborColors.Muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text("R$ 65,80", Modifier.padding(top = 4.dp), fontSize = 12.sp, color = HarborColors.Wine, fontWeight = FontWeight.Bold)
+                                Text("Últimas ${book.estoque.coerceAtMost(5)} unidades", Modifier.padding(top = 2.dp), fontSize = 8.sp, lineHeight = 10.sp, color = HarborColors.Amber, textAlign = TextAlign.Center)
+                                Spacer(Modifier.height(7.dp))
+                                Button(onClick = { onAdd(book) }, Modifier.fillMaxWidth().height(31.dp), contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = HarborColors.WineSolid, contentColor = HarborColors.Sand)) {
                                     Text(if ((cart[book.id] ?: 0) > 0) "Adicionar +" else "Comprar", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }
-                                TextButton(onClick = { onBook(book) }, Modifier.height(25.dp), contentPadding = PaddingValues(0.dp)) { Text("Detalhes", fontSize = 10.sp, color = HarborColors.Wine, fontWeight = FontWeight.Medium) }
+                                TextButton(onClick = { onBook(book) }, Modifier.fillMaxWidth().heightIn(min = 31.dp), contentPadding = PaddingValues(vertical = 2.dp)) { Text("Detalhes", fontSize = 10.sp, color = HarborColors.Wine, fontWeight = FontWeight.Medium) }
                             }
                         }
                     }
@@ -967,13 +1058,16 @@ internal fun HarborCheckoutScreen(
     onPayment: (String) -> Unit,
     busy: Boolean,
     message: String,
-    onFinish: () -> Unit,
+    onFinish: (Double) -> Unit,
     onBack: () -> Unit,
 ) {
     val items = books.filter { (cart[it.id] ?: 0) > 0 }
     val subtotal = items.sumOf { 65.80 * (cart[it.id] ?: 0) }
     val discount = if (coupon.equals("HARBOR10", true)) subtotal * .10 else 0.0
-    Box(Modifier.fillMaxSize().background(HarborColors.Sand).statusBarsPadding().navigationBarsPadding()) {
+    val amount = if (items.isEmpty()) subscriptionPlan?.preco ?: 0.0 else subtotal
+    val shipping = if (cep.length >= 8) 20.0 else 0.0
+    val total = amount + shipping - discount
+    Box(Modifier.fillMaxSize().background(HarborColors.Cream).statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 listOf("Revisão", "Pagamento", "Finalização").forEachIndexed { index, label ->
@@ -1009,15 +1103,13 @@ internal fun HarborCheckoutScreen(
                         }
                     }
                     CheckoutInput("CEP", cep, onCep, KeyboardType.Number)
-                    Spacer(Modifier.height(4.dp))
                     CheckoutInput("Cupom", coupon, onCoupon)
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp), color = HarborColors.RoseLine, thickness = 1.dp)
-                    val amount = if (items.isEmpty()) subscriptionPlan?.preco ?: 0.0 else subtotal
+                    HorizontalDivider(Modifier.padding(top = 2.dp, bottom = 8.dp), color = HarborColors.RoseLine, thickness = 1.dp)
                     CheckoutAmount("Subtotal", amount)
-                    CheckoutAmount("Frete", if (cep.length >= 8) 20.0 else 0.0)
+                    CheckoutAmount("Frete", shipping)
                     CheckoutAmount("Desconto", -discount)
                     HorizontalDivider(Modifier.padding(vertical = 6.dp), color = HarborColors.RoseLine, thickness = 1.dp)
-                    CheckoutAmount("Total", amount + (if (cep.length >= 8) 20.0 else 0.0) - discount, bold = true)
+                    CheckoutAmount("Total", total, bold = true)
                 }
             }
             ModernCard(modifier = Modifier.padding(top = 14.dp), corner = 22.dp) {
@@ -1025,14 +1117,15 @@ internal fun HarborCheckoutScreen(
                     Text("Forma de Pagamento", Modifier.fillMaxWidth(), color = HarborColors.Wine, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         listOf("Cartão", "Pix").forEach { method ->
-                            FilterChip(selected = payment == method, onClick = { onPayment(method) }, label = { Text(method, fontSize = 11.sp, fontWeight = if (payment == method) FontWeight.Bold else FontWeight.Medium) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = HarborColors.Wine, selectedLabelColor = HarborColors.Sand))
+                            FilterChip(selected = payment == method, onClick = { onPayment(method) }, label = { Text(method, fontSize = 11.sp, fontWeight = if (payment == method) FontWeight.Bold else FontWeight.Medium) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = HarborColors.WineSolid, selectedLabelColor = HarborColors.Sand))
                         }
                     }
                     Text("Pagamento protegido. Nenhum dado de cartão é armazenado.", Modifier.padding(top = 4.dp), color = HarborColors.Muted, fontSize = 9.sp)
                 }
             }
             if (message.isNotBlank()) ModernNotice(message)
-            HarborPrimaryButton(if (subscriptionPlan != null) "Finalizar assinatura" else "Finalizar o Pedido", busy, onFinish, Modifier.padding(top = 16.dp))
+            HarborPrimaryButton(if (subscriptionPlan != null) "Finalizar assinatura" else "Finalizar o Pedido", busy, { onFinish(total) }, Modifier.padding(top = 16.dp))
+            Text("Pagamento simulado via Pix na próxima etapa.", Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center, color = HarborColors.Muted, fontSize = 10.sp)
             TextButton(onClick = onBack, Modifier.align(Alignment.CenterHorizontally)) { Text("Voltar", color = HarborColors.Wine, fontSize = 12.sp) }
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter).height(3.dp), color = HarborColors.Wine, trackColor = HarborColors.Sand)
@@ -1041,18 +1134,35 @@ internal fun HarborCheckoutScreen(
 
 @Composable
 private fun CheckoutInput(label: String, value: String, onValue: (String) -> Unit, keyboard: KeyboardType = KeyboardType.Text) {
-    BasicTextField(
-        value, onValue,
-        Modifier.fillMaxWidth(.62f).height(36.dp).padding(vertical = 2.dp)
-            .clip(CircleShape).background(Color.White)
-            .border(1.dp, HarborColors.RoseLine, CircleShape)
-            .padding(horizontal = 15.dp, vertical = 8.dp)
-            .semantics { contentDescription = label },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboard),
-        textStyle = TextStyle(color = HarborColors.Wine, fontSize = 12.sp),
-        decorationBox = { inner -> Box { if (value.isBlank()) Text(label, color = HarborColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium); inner() } }
-    )
+    Column(Modifier.fillMaxWidth().padding(bottom = 9.dp)) {
+        Text(
+            label,
+            Modifier.padding(start = 4.dp, bottom = 4.dp),
+            color = HarborColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Medium
+        )
+        BasicTextField(
+            value, onValue,
+            Modifier.fillMaxWidth().defaultMinSize(minHeight = 46.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(HarborColors.Field)
+                .border(1.dp, HarborColors.RoseLine.copy(alpha = 0.75f), RoundedCornerShape(14.dp))
+                .padding(horizontal = 14.dp, vertical = 13.dp)
+                .semantics { contentDescription = label },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+            textStyle = TextStyle(color = HarborColors.Ink, fontSize = 13.sp),
+            cursorBrush = SolidColor(HarborColors.Wine),
+            decorationBox = { inner ->
+                Box {
+                    if (value.isBlank()) Text(
+                        if (label == "CEP") "00000-000" else "Código promocional",
+                        color = HarborColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium
+                    )
+                    inner()
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -1060,6 +1170,159 @@ private fun CheckoutAmount(label: String, amount: Double, bold: Boolean = false)
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = if (bold) HarborColors.Wine else HarborColors.Muted, fontSize = 12.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text("R$ ${"%.2f".format(amount)}", color = HarborColors.Wine, fontSize = if (bold) 13.sp else 12.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+    }
+}
+
+/** Gera uma matriz quadrada com finder/timing patterns e dados aleatórios, com cara de QR Code. */
+private fun generatePixQrMatrix(size: Int = 25): Array<BooleanArray> {
+    val random = java.util.Random()
+    val matrix = Array(size) { BooleanArray(size) }
+    for (y in 0 until size) for (x in 0 until size) matrix[y][x] = random.nextBoolean()
+
+    fun finder(originX: Int, originY: Int) {
+        for (y in -1..7) for (x in -1..7) {
+            val px = originX + x
+            val py = originY + y
+            if (px < 0 || py < 0 || px >= size || py >= size) continue
+            val inRing = x in 0..6 && y in 0..6 && (x == 0 || x == 6 || y == 0 || y == 6)
+            val inCore = x in 2..4 && y in 2..4
+            matrix[py][px] = inRing || inCore
+        }
+    }
+    finder(0, 0)
+    finder(size - 7, 0)
+    finder(0, size - 7)
+    for (i in 8 until size - 8) {
+        matrix[6][i] = i % 2 == 0
+        matrix[i][6] = i % 2 == 0
+    }
+    return matrix
+}
+
+@Composable
+private fun PixQrCode(matrix: Array<BooleanArray>, modifier: Modifier = Modifier) {
+    val dark = Color(0xFF1B1216) // módulos sempre escuros, em qualquer tema
+    Canvas(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .padding(10.dp)
+            .semantics { contentDescription = "QR Code aleatório do pagamento Pix" }
+    ) {
+        val n = matrix.size
+        val cell = minOf(size.width, size.height) / n.toFloat()
+        val originX = (size.width - cell * n) / 2f
+        val originY = (size.height - cell * n) / 2f
+        matrix.forEachIndexed { y, row ->
+            row.forEachIndexed { x, on ->
+                if (on) drawRect(dark, topLeft = Offset(originX + x * cell, originY + y * cell), size = Size(cell, cell))
+            }
+        }
+    }
+}
+
+/** Aba simulada de pagamento por Pix: QR Code aleatório, valor da compra e confirmação. */
+@Composable
+internal fun HarborPixScreen(
+    amount: Double,
+    code: String,
+    isSubscription: Boolean,
+    busy: Boolean,
+    message: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val qr = remember(code) { generatePixQrMatrix() }
+    Box(Modifier.fillMaxSize().background(HarborColors.Cream).statusBarsPadding().navigationBarsPadding()) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("‹", Modifier.clickable(onClick = onBack).padding(end = 12.dp), color = HarborColors.Wine, fontSize = 30.sp)
+                Text("Pagamento via Pix", color = HarborColors.Wine, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
+            }
+            Spacer(Modifier.height(14.dp))
+            ModernCard {
+                Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Escaneie o QR Code para pagar", fontSize = 13.sp, lineHeight = 17.sp, color = HarborColors.Ink, textAlign = TextAlign.Center)
+                    Text(
+                        "Pagamento simulado — nenhuma cobrança real é feita",
+                        Modifier.padding(top = 4.dp), fontSize = 10.sp, color = HarborColors.Muted, textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    PixQrCode(qr, Modifier.fillMaxWidth().aspectRatio(1f))
+                    Spacer(Modifier.height(14.dp))
+                    Text("Valor a pagar", fontSize = 11.sp, color = HarborColors.Muted, letterSpacing = 0.4.sp)
+                    Text(
+                        "R$ ${"%.2f".format(amount)}",
+                        Modifier.padding(top = 3.dp), fontSize = 27.sp, fontWeight = FontWeight.Bold, color = HarborColors.Wine
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text("Pix copia e cola (simulado)", fontSize = 10.sp, color = HarborColors.Muted)
+                    Text(
+                        code,
+                        Modifier.padding(top = 4.dp).clip(RoundedCornerShape(9.dp)).background(HarborColors.SurfaceWarm)
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        fontSize = 9.sp, lineHeight = 12.sp, color = HarborColors.Ink, textAlign = TextAlign.Center,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (message.isNotBlank()) ModernNotice(message)
+            HarborPrimaryButton("Confirmar pagamento", busy, onConfirm, Modifier.padding(top = 16.dp))
+            TextButton(onClick = onCancel, Modifier.padding(top = 2.dp)) {
+                Text("Cancelar pagamento", color = HarborColors.Wine, fontSize = 12.sp)
+            }
+            Text(
+                if (isSubscription) "Ao confirmar, sua assinatura é ativada na hora."
+                else "Ao confirmar, seu pedido é registrado e passa a ser preparado.",
+                Modifier.padding(top = 6.dp), fontSize = 10.sp, lineHeight = 13.sp, color = HarborColors.Muted, textAlign = TextAlign.Center
+            )
+        }
+        if (busy) LinearProgressIndicator(
+            Modifier.fillMaxWidth().align(Alignment.TopCenter).height(3.dp),
+            color = HarborColors.Wine, trackColor = HarborColors.Sand
+        )
+    }
+}
+
+/** Confirmação exibida depois do pagamento Pix aprovado. */
+@Composable
+internal fun HarborPixSuccessScreen(
+    amount: Double,
+    isSubscription: Boolean,
+    onHome: () -> Unit,
+) {
+    Box(
+        Modifier.fillMaxSize().background(HarborColors.HeaderBrush).statusBarsPadding().navigationBarsPadding(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(Modifier.padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                Modifier.size(88.dp).clip(CircleShape).background(HarborColors.Sand),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("✓", color = HarborColors.WineOnLight, fontSize = 46.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                "Pagamento confirmado!",
+                Modifier.padding(top = 18.dp), color = HarborColors.Sand, fontSize = 22.sp,
+                fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, textAlign = TextAlign.Center
+            )
+            Text(
+                if (isSubscription) "Sua assinatura está ativa. A caixa deste mês já está sendo preparada com os gêneros que você escolheu."
+                else "Seu pedido foi confirmado e já está em preparação. Acompanhe o rastreio na tela Pedidos.",
+                Modifier.padding(top = 10.dp), color = Color(0xFFEFD4DA), fontSize = 13.sp, lineHeight = 18.sp, textAlign = TextAlign.Center
+            )
+            Text(
+                "R$ ${"%.2f".format(amount)}",
+                Modifier.padding(top = 16.dp), color = HarborColors.Sand, fontSize = 25.sp, fontWeight = FontWeight.Bold
+            )
+            Text("Pagamento simulado via Pix", Modifier.padding(top = 4.dp), color = Color(0xFFE5B7C3), fontSize = 10.sp)
+            HarborPrimaryButton("Voltar ao início", onClick = onHome, modifier = Modifier.padding(top = 26.dp))
+        }
     }
 }
 
@@ -1220,7 +1483,7 @@ internal fun HarborCommunityScreen(
         Row(Modifier.fillMaxWidth().background(HarborColors.Cream).navigationBarsPadding().imePadding().padding(horizontal = 22.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicTextField(
                 text, onText,
-                Modifier.weight(1f).heightIn(min = 40.dp, max = 80.dp).clip(CircleShape).background(Color.White)
+                Modifier.weight(1f).heightIn(min = 42.dp, max = 80.dp).clip(CircleShape).background(HarborColors.Field)
                     .border(1.dp, HarborColors.RoseLine, CircleShape)
                     .padding(start = 14.dp, end = 9.dp, top = 10.dp, bottom = 8.dp)
                     .semantics { contentDescription = "Escreva uma mensagem para a comunidade" },
@@ -1259,10 +1522,10 @@ private fun CommunityBubble(name: String, message: String, avatar: Int, own: Boo
         Column(
             Modifier.widthIn(max = 248.dp).shadow(4.dp, RoundedCornerShape(if (own) 18.dp else 17.dp), ambientColor = Color(0x1A630626), spotColor = Color(0x26630626))
                 .clip(RoundedCornerShape(if (own) 18.dp else 17.dp))
-                .background(if (own) HarborColors.Wine else Color.White)
+                .background(if (own) HarborColors.WineSolid else HarborColors.Paper)
                 .padding(horizontal = 12.dp, vertical = 9.dp)
         ) {
-            Text("$name.:  $message", color = if (own) Color.White else HarborColors.Ink, fontSize = 12.sp, lineHeight = 15.sp)
+            Text("$name.:  $message", color = if (own) HarborColors.OnWine else HarborColors.Ink, fontSize = 12.sp, lineHeight = 15.sp)
         }
         if (own) Image(painterResource(avatar), "Seu avatar", Modifier.padding(start = 8.dp).size(2.dp).clearAndSetSemantics { })
     }
@@ -1274,7 +1537,7 @@ private fun ReviewBubble(item: MensagemUi, own: Boolean) {
         Column(
             Modifier.widthIn(max = 252.dp).shadow(4.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x1A630626), spotColor = Color(0x26630626))
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
+                .background(HarborColors.Paper)
                 .padding(11.dp)
         ) {
             Text("${item.nome} avaliou uma leitura", color = HarborColors.Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1282,6 +1545,17 @@ private fun ReviewBubble(item: MensagemUi, own: Boolean) {
         }
     }
 }
+
+/** Pedido de exemplo exibido quando a conta ainda não tem caixas (demonstração). */
+private val DemoPedidos = listOf(
+    CaixaUi(
+        id = 0,
+        status = "Entregue",
+        codigoRastreio = "BR1234567895",
+        livro = LivroUi(0, "A Biblioteca da Meia-Noite", "Matt Haig", "Entre a vida e a morte existe uma biblioteca.", "Fantasia", 20),
+        criadaEm = "2026-10-12T10:00:00",
+    ),
+)
 
 @Composable
 internal fun HarborOrderScreen(
@@ -1294,12 +1568,9 @@ internal fun HarborOrderScreen(
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 16.dp, bottom = 12.dp)) {
             HarborScreenTitle("Histórico de Pedidos")
             Image(painterResource(R.drawable.ilustracao_rastreamento), "Ilustração de caixa Harbor em transporte", Modifier.fillMaxWidth().height(102.dp).padding(top = 7.dp), contentScale = ContentScale.Fit)
-            if (boxes.isEmpty()) {
-                ModernCard {
-                    Column(Modifier.padding(17.dp)) { Text("Seu histórico de pedidos aparecerá aqui", color = HarborColors.Wine, fontSize = 13.sp, fontWeight = FontWeight.Bold); Text("Quando sua caixa for preparada, você poderá acompanhar o envio nesta tela.", Modifier.padding(top = 5.dp), color = HarborColors.Muted, fontSize = 11.sp, lineHeight = 14.sp) }
-                }
-            }
-            boxes.forEach { box ->
+            if (boxes.isEmpty()) ModernNotice("Exibindo pedido de exemplo — seus pedidos reais aparecem aqui após a compra.", HarborColors.Muted)
+            val historico = boxes.ifEmpty { DemoPedidos }
+            historico.forEach { box ->
                 ModernCard(modifier = Modifier.padding(top = 10.dp)) {
                     Row(Modifier.fillMaxSize().padding(14.dp)) {
                         Box(Modifier.align(Alignment.CenterVertically).width(64.dp), contentAlignment = Alignment.Center) {
@@ -1315,7 +1586,7 @@ internal fun HarborOrderScreen(
                                 Text("  •  ${box.criadaEm.take(10)}", Modifier.padding(start = 4.dp), color = HarborColors.Muted, fontSize = 11.sp)
                             }
                             if (box.codigoRastreio.isNotBlank()) Text("Rastreio: ${box.codigoRastreio}", Modifier.padding(top = 4.dp), color = HarborColors.Wine, fontSize = 11.sp)
-                            if (box.status.equals("Entregue", true) && box.livro != null) TextButton(onClick = { onRate(box) }, contentPadding = PaddingValues(vertical = 2.dp)) { Text("Avaliar esta leitura  ★", color = HarborColors.Gold, fontSize = 11.sp, fontWeight = FontWeight.Medium) }
+                            if (box.status.equals("Entregue", true) && box.livro != null && box.id > 0) TextButton(onClick = { onRate(box) }, contentPadding = PaddingValues(vertical = 2.dp)) { Text("Avaliar esta leitura  ★", color = HarborColors.Gold, fontSize = 11.sp, fontWeight = FontWeight.Medium) }
                         }
                     }
                 }

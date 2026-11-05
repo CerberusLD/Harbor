@@ -28,9 +28,12 @@ Com depuração sem fio, conecte antes com `adb connect <ip>:<porta>`; o aparelh
 ## Fluxos no cliente
 
 - Cadastro com validação da API, consentimento e endereço de entrega; login e sessão cifrada com chave do Android Keystore.
+- **Modo escuro** com alternância na tela de login e no cartão “Aparência” do perfil; a escolha fica gravada no aparelho.
 - Curadoria com limite de 1 a 3 gêneros.
 - Consulta e escolha de plano, resumo das condições e confirmação em modo de demonstração.
+- **Pagamento Pix simulado**: ao finalizar a assinatura ou o pedido, surge uma aba com QR Code aleatório, o valor da compra e o botão “Confirmar pagamento”. Confirmar ativa a assinatura/registra o pedido na API; cancelar não faz nada.
 - Início, ofertas e edições do catálogo, detalhe de livro, pedidos/rastreio, comunidade, preferências, perfil e anonimização.
+- O histórico de pedidos mostra um pedido de exemplo enquanto a conta não tiver caixas, para apresentar o formato do acompanhamento.
 - Mensagens da comunidade e operações protegidas são autorizadas pela API. Uma assinatura só é ativada após resposta de pagamento aprovado.
 - Catálogo e planos ficam em cache local para leitura sem rede; mensagens e dados identificáveis não são gravados nesse cache.
 

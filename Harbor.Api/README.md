@@ -40,6 +40,8 @@ Todas as rotas de `/api` retornam JSON. Envie `Authorization: Bearer <token>` na
 | `GET /api/livros` | Catálogo público |
 | `POST /api/operacao/curadoria` | Sugerir obra em estoque compatível com os gêneros do assinante |
 | `GET /api/caixas` | Caixas e situação de entrega do cliente autenticado |
+| `POST /api/pedidos` | Criar pedido do carrinho: `cep`, `cupom`, `formaPagamento`, `itens` (`livroId`, `quantidade`) |
+| `POST /api/pedidos/{id}/pagamento` | Aprovar ou recusar o pedido do carrinho no fluxo acadêmico de demonstração |
 | `POST /api/avaliacoes` | Avaliar livro recebido: `livroId`, `nota` (1–5), `comentario` |
 | `GET/POST /api/comunidade` | Ler mensagens / publicar para assinante ativo |
 | `POST /api/operacao/livros` | Cadastrar título e estoque |
@@ -69,13 +71,13 @@ Exemplo de cadastro:
 - Só se avalia livro entregue; somente assinante ativo publica na comunidade.
 - Pedido de assinatura sem gateway de pagamento permanece pendente. Não são recebidos nem armazenados dados de cartão.
 - Exclusão de perfil anonimiza os dados identificadores imediatamente.
-- Pagamento simulado só pode ser confirmado no ambiente `Development`; rotas operacionais exigem `X-Operations-Key` fora dele.
+- Pagamento simulado é aceito também fora do ambiente `Development` (o app de demonstração depende dele); a resposta traz `simulado: true`. Rotas operacionais exigem `X-Operations-Key` fora do `Development`.
 
 ## Escopo e pendências conhecidas
 
 Este repositório continha originalmente um CRUD de embarcações, que não correspondia ao relatório Harbor. A implementação atual troca esse domínio pelo MVP do relatório. Para manter as regras comerciais, a assinatura não é ativada até existir integração de pagamento aprovada.
 
-A confirmação de pagamento atualmente é uma rota de demonstração e só responde no ambiente `Development`; não substitui uma confirmação assinada por um provedor. Os planos podem ser trocados e a assinatura pode ser cancelada; os endpoints operacionais permitem curadoria por gênero, estoque, montagem/envio e tratativas. Em ambiente compartilhado, configure uma `HARBOR_OPERATIONS_KEY` forte e envie-a no header `X-Operations-Key`.
+A confirmação de pagamento é uma rota de demonstração (assinatura e pedido do carrinho) e responde em qualquer ambiente, sempre com `simulado: true`; não substitui uma confirmação assinada por um provedor. Os planos podem ser trocados e a assinatura pode ser cancelada; os endpoints operacionais permitem curadoria por gênero, estoque, montagem/envio e tratativas. Em ambiente compartilhado, configure uma `HARBOR_OPERATIONS_KEY` forte e envie-a no header `X-Operations-Key`.
 
 Ainda faltam itens de produção definidos no documento: integração real de pagamento com TLS 1.3 e tokenização, renovação agendada e suspensão/notificação por falha, consulta automática de rastreio a cada 10 minutos, integração de carga ao Discord, trilha imutável por 12 meses, backup incremental/RPO/RTO, monitoramento de uptime e identidade/roles administrativas completas. A rota operacional usa uma chave compartilhada e não substitui um provedor de identidade administrativo. O prazo de arrependimento de 7 dias é informado no fluxo, mas ainda não há integração de reembolso automatizado. Metas RNF01/RNF02/RNF07/RNF13 também exigem instrumentação, operação e evidência de carga/cobertura. O projeto já cifra dados pessoais em desenvolvimento, mas ainda precisa de gestão operacional da chave, TLS de ponta a ponta e demais controles antes de receber dados reais.
 
